@@ -1,0 +1,7 @@
+---
+# defaults file for rdma-core
+perftest_build: Debug
+perftest_install_become: false
+perftest_install_destination: /usr
+perftest_j: 5
+perftest_version: 4.5-0.17

@@ -1,0 +1,33 @@
+---
+- name: Install all required dev packages
+  become: true
+  apt:
+    pkg:
+      - libpci-dev
+  when: false
+- include_tasks: github.yaml
+  when: 'perftest_fetch_method == "github"'
+- include_tasks: git_push.yaml
+  when: 'perftest_fetch_method == "git_push"'
+- name: Configure perftest
+  shell: |
+    ./autogen.sh
+    export CFLAGS="{{perftest_cflags}} -Wl,-rpath,{{perftest_libibverbs_path}}"
+    ./configure --prefix={{perftest_install_destination}} {{perftest_configure_flags}}
+  args:
+    chdir: "{{ perftest_src_destination }}"
+    creates: "{{ perftest_src_destination }}/Makefile"
+  environment:
+    LIBRARY_PATH: "{{perftest_libibverbs_path}}"
+- name: Compile perftest
+  make:
+    chdir: "{{ perftest_src_destination }}"
+    params:
+      NUM_THREADS: "{{perftest_j}}"
+  environment:
+    LIBRARY_PATH: "{{perftest_libibverbs_path}}"
+- name: Install perftest
+  become: "{{perftest_install_become}}"
+  make:
+    target: install
+    chdir: "{{ perftest_src_destination }}"

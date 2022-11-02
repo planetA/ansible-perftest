@@ -1,0 +1,12 @@
+---
+- name: Get perftest
+  unarchive: 
+    src: "https://github.com/linux-rdma/perftest/archive/refs/tags/v{{perftest_version}}.tar.gz"
+    dest: "{{perftest_src_destination | dirname}}"
+    remote_src: yes
+    creates: "{{perftest_src_destination}}"
+- name: Move to the expected location
+  command: "mv {{perftest_src_destination}}-{{perftest_version}} {{perftest_src_destination}}"
+  args:
+    creates: "{{perftest_src_destination}}"
+
