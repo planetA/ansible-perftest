@@ -9,23 +9,41 @@
   when: 'perftest_fetch_method == "github"'
 - include_tasks: git_push.yaml
   when: 'perftest_fetch_method == "git_push"'
+- debug:
+    var: perftest_src_destination
 - name: Configure perftest
   shell: |
-    ./autogen.sh
-    export CFLAGS="{{perftest_cflags}} -Wl,-rpath,{{perftest_libibverbs_path}}"
-    ./configure --prefix={{perftest_install_destination}} {{perftest_configure_flags}}
+    ./autogen.sh || exit 1
+    ./configure --prefix={{perftest_install_destination}} {{perftest_configure_flags}} || exit 1
+    sed -i.bak '/HAVE_DCS/d' {{ perftest_src_destination }}/config.h
+    cat {{ perftest_src_destination }}/config.h | grep HAVE_DCS
+    cat {{ perftest_src_destination }}/config.h | head -n 20
+    echo -------------------------------
   args:
     chdir: "{{ perftest_src_destination }}"
     creates: "{{ perftest_src_destination }}/Makefile"
+  register: result
   environment:
-    LIBRARY_PATH: "{{perftest_libibverbs_path}}"
+    LIBRARY_PATH: "{{perftest_libibverbs_path}}/lib"
+    C_INCLUDE_PATH: "{{perftest_libibverbs_path}}/include"
+    CFLAGS: "{{perftest_cflags}} -L{{perftest_libibverbs_path}}/lib -D_GNU_SOURCE"
+    LDFLAGS: "-Wl,-rpath,{{perftest_libibverbs_path}}/lib"
+- debug:
+    var: result
+- debug:
+    var: perftest_src_destination
 - name: Compile perftest
   make:
     chdir: "{{ perftest_src_destination }}"
     params:
-      NUM_THREADS: "{{perftest_j}}"
-  environment:
-    LIBRARY_PATH: "{{perftest_libibverbs_path}}"
+      LIBRARY_PATH: "{{perftest_libibverbs_path}}/lib"
+      C_INCLUDE_PATH: "{{perftest_libibverbs_path}}/include"
+      CFLAGS: "{{perftest_cflags}} -L{{perftest_libibverbs_path}}/lib -D_GNU_SOURCE"
+      LDFLAGS: "-Wl,-rpath,{{perftest_libibverbs_path}}/lib"
+      V: 1
+  register: result
+- debug:
+    var: result
 - name: Install perftest
   become: "{{perftest_install_become}}"
   make:
